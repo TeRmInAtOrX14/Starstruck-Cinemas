@@ -1,4 +1,5 @@
 import './globals.css';
+import { Analytics } from '@vercel/analytics/next';
 
 export const metadata = {
   title: 'Starstruck Cinemas Web',
@@ -61,7 +62,8 @@ export default function RootLayout({ children }) {
             }
           `
         }} />
-      </body>
+          <Analytics />
+    </body>
     </html>
   );
 }
