@@ -368,11 +368,11 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Booking Modal Overlay */}
-      {bookingStep > 0 && bookingMovie && (
-        <div className="printable-modal" style={{position: bookingStep === 3 ? 'static' : 'fixed', top:0, left:0, right:0, bottom:0, background: bookingStep === 3 ? 'transparent' : 'rgba(0,0,0,0.8)', backdropFilter: bookingStep === 3 ? 'none' : 'blur(10px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+      {/* Booking Modal Overlay — Steps 1 & 2 */}
+      {bookingStep > 0 && bookingStep < 3 && bookingMovie && (
+        <div className="printable-modal" style={{position: 'fixed', top:0, left:0, right:0, bottom:0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
           <div className="glass-panel" style={{width: '95%', maxWidth: '550px', position: 'relative', maxHeight: '95vh', overflowY: 'auto'}}>
-            {bookingStep !== 3 && <button className="no-print" style={{position: 'absolute', top: '15px', right: '20px', background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '1.2rem'}} onClick={() => setBookingStep(0)}>✖</button>}
+            <button className="no-print" style={{position: 'absolute', top: '15px', right: '20px', background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '1.2rem'}} onClick={() => setBookingStep(0)}>✖</button>
             
             {bookingStep === 1 && (
               <>
@@ -464,86 +464,168 @@ export default function Home() {
                 <button className="btn" style={{background: 'transparent', marginTop: '10px'}} onClick={() => setBookingStep(1)}>Modify Seats</button>
               </>
             )}
-
-            {bookingStep === 3 && (
-              <div style={{textAlign: 'center'}}>
-                <h2 style={{color: '#4CAF50', marginBottom: '1rem'}} className="no-print">Ticket Secured!</h2>
-                
-                <div id="pdf-ticket-container" style={{background: 'white', color: 'black', padding: '2rem', borderRadius: '16px', border: 'none', margin: '0 auto', maxWidth: '450px', boxShadow: '0 8px 30px rgba(0,0,0,0.1)'}}>
-                  <div style={{ borderBottom: '2px dashed #ccc', paddingBottom: '15px', marginBottom: '15px' }}>
-                    <h1 style={{fontSize: '1.6rem', marginBottom: '0.5rem', color: '#111'}}>{bookingMovie.name}</h1>
-                    <h3 style={{color: '#FF2B5E', fontSize:'1.1rem'}}>{cinema}</h3>
-                  </div>
-                  
-                  <div style={{textAlign: 'left', fontSize: '1rem', lineHeight: '1.6', color: '#333'}}>
-                    <p><strong>Customer Name:</strong> {bName}</p>
-                    <p><strong>Movie Name:</strong> {bookingMovie.name}</p>
-                    <p><strong>Cinema Location:</strong> {cinema}</p>
-                    <p><strong>Showtime:</strong> {bookingMovie.date} @ {bookingMovie.showtime || '18:00'}</p>
-                    <p><strong>Ticket Quantity:</strong> {selectedSeats.length} Tickets</p>
-                    <p><strong>Seat Assignments:</strong> {selectedSeats.join(', ')}</p>
-                    <br/>
-                    <p style={{fontSize:'1.2rem', fontWeight:'bold', borderTop: '1px solid #eee', paddingTop: '10px'}}>Total Paid: Rs. {totalPrice.toFixed(2)}</p>
-                  </div>
-                  
-                  <div style={{marginTop: '25px', display: 'flex', justifyContent: 'center'}}>
-                    <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=Ticket:${bName}-${bookingMovie.name}-${selectedSeats.join('')}`} alt="QR Code" width="150" height="150" />
-                  </div>
-                  <p style={{fontSize: '0.8rem', marginTop: '15px', color: '#888', textTransform: 'uppercase', letterSpacing: '1px'}}>Scan for entry - Valid Ticket</p>
-                </div>
-                
-                <button 
-                  className="btn no-print" 
-                  onClick={async () => {
-                    const html2pdf = (await import('html2pdf.js')).default;
-                    const element = document.getElementById('pdf-ticket-container');
-                    const fileName = `Starstruck_Ticket_${bName.replace(/\s+/g, '_')}.pdf`;
-                    const opt = {
-                      margin:       1,
-                      filename:     fileName,
-                      image:        { type: 'jpeg', quality: 0.98 },
-                      html2canvas:  { scale: 2, useCORS: true },
-                      jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
-                    };
-                    
-                    // Capacitor Native Implementation
-                    try {
-                      // Retrieve base64 strictly
-                      const base64Pdf = await html2pdf().set(opt).from(element).output('datauristring');
-                      const base64Data = base64Pdf.split(',')[1];
-
-                      // Dynamic imports for Capacitor so it doesn't break Web SSR
-                      const { Filesystem, Directory } = await import('@capacitor/filesystem');
-                      const { Share } = await import('@capacitor/share');
-
-                      const writeResult = await Filesystem.writeFile({
-                        path: fileName,
-                        data: base64Data,
-                        directory: Directory.Documents,
-                        recursive: true
-                      });
-
-                      await Share.share({
-                        title: 'Movie Ticket - Starstruck Cinemas',
-                        text: `Attached is your ticket for ${bookingMovie.name} at ${cinema}.`,
-                        url: writeResult.uri,
-                        dialogTitle: 'Save or Share your PDF Ticket'
-                      });
-
-                    } catch (capacitorError) {
-                      console.error("Capacitor Native failed, falling back to Web:", capacitorError);
-                      // Fallback generic download for desktop browsers
-                      html2pdf().set(opt).from(element).save();
-                    }
-                  }} 
-                  style={{background: '#007AFF', marginTop: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%'}}
-                >
-                  <span style={{fontSize: '1.2rem'}}>🖨️</span> Download Official PDF
-                </button>
-                <button className="btn no-print" onClick={() => { setBookingStep(0); setBookingMovie(null); }} style={{background: 'transparent', marginTop: '10px', width: '100%'}}>Close Window</button>
-              </div>
-            )}
             
+          </div>
+        </div>
+      )}
+
+      {/* Full-Page Ticket View — Step 3 */}
+      {bookingStep === 3 && bookingMovie && (
+        <div className="printable-modal" style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'linear-gradient(135deg, #0a0a0a 0%, #1a0a12 30%, #0d0d1a 70%, #0a0a0a 100%)',
+          zIndex: 1000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          overflowY: 'auto', padding: '2rem 1rem'
+        }}>
+          {/* Animated background accents */}
+          <div className="no-print" style={{position: 'absolute', top: '10%', left: '5%', width: '300px', height: '300px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,43,94,0.12) 0%, transparent 70%)', filter: 'blur(60px)', pointerEvents: 'none'}} />
+          <div className="no-print" style={{position: 'absolute', bottom: '10%', right: '5%', width: '250px', height: '250px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,153,51,0.1) 0%, transparent 70%)', filter: 'blur(60px)', pointerEvents: 'none'}} />
+
+          {/* Success Header */}
+          <div className="no-print" style={{textAlign: 'center', marginBottom: '2rem', position: 'relative', zIndex: 1}}>
+            <div style={{fontSize: '3.5rem', marginBottom: '0.5rem', animation: 'fadeIn 0.6s ease'}}>🎬</div>
+            <h1 style={{
+              fontSize: '2rem', fontWeight: 800, letterSpacing: '-1px',
+              background: 'linear-gradient(135deg, #FF9933, #FF2B5E)',
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+              margin: '0 0 0.5rem'
+            }}>Booking Confirmed!</h1>
+            <p style={{color: 'rgba(255,255,255,0.5)', fontSize: '0.95rem', margin: 0}}>Your cinematic experience awaits</p>
+          </div>
+
+          {/* Themed Ticket Card */}
+          <div style={{
+            position: 'relative', zIndex: 1,
+            width: '100%', maxWidth: '480px',
+            background: 'rgba(255,255,255,0.04)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: '24px',
+            overflow: 'hidden',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05) inset'
+          }}>
+            {/* Top gradient stripe */}
+            <div style={{height: '4px', background: 'linear-gradient(90deg, #FF9933, #FF2B5E, #FF9933)', width: '100%'}} />
+
+            {/* Movie header section */}
+            <div style={{padding: '1.5rem 2rem', borderBottom: '1px dashed rgba(255,255,255,0.1)', textAlign: 'center'}}>
+              <h2 style={{margin: '0 0 0.3rem', fontSize: '1.5rem', fontWeight: 700, color: '#fff'}}>{bookingMovie.name}</h2>
+              <p style={{margin: 0, color: '#FF2B5E', fontWeight: 600, fontSize: '0.95rem'}}>{cinema}</p>
+            </div>
+
+            {/* Ticket details grid */}
+            <div style={{padding: '1.5rem 2rem'}}>
+              <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem'}}>
+                <div>
+                  <p style={{color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', margin: '0 0 4px'}}>Customer</p>
+                  <p style={{color: '#fff', fontWeight: 600, margin: 0, fontSize: '1rem'}}>{bName}</p>
+                </div>
+                <div>
+                  <p style={{color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', margin: '0 0 4px'}}>Date & Time</p>
+                  <p style={{color: '#fff', fontWeight: 600, margin: 0, fontSize: '1rem'}}>{bookingMovie.date}<br/><span style={{color: 'rgba(255,255,255,0.6)', fontWeight: 400}}>@ {bookingMovie.showtime || '18:00'}</span></p>
+                </div>
+                <div>
+                  <p style={{color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', margin: '0 0 4px'}}>Seats</p>
+                  <p style={{color: '#fff', fontWeight: 600, margin: 0, fontSize: '1rem'}}>{selectedSeats.join(', ')}</p>
+                </div>
+                <div>
+                  <p style={{color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', margin: '0 0 4px'}}>Quantity</p>
+                  <p style={{color: '#fff', fontWeight: 600, margin: 0, fontSize: '1rem'}}>{selectedSeats.length} {selectedSeats.length === 1 ? 'Ticket' : 'Tickets'}</p>
+                </div>
+              </div>
+
+              {/* Dashed separator */}
+              <div style={{borderTop: '2px dashed rgba(255,255,255,0.1)', margin: '1.5rem 0', position: 'relative'}}>
+                <div style={{position: 'absolute', top: '-12px', left: '-2rem', width: '24px', height: '24px', borderRadius: '50%', background: '#0a0a0a'}} />
+                <div style={{position: 'absolute', top: '-12px', right: '-2rem', width: '24px', height: '24px', borderRadius: '50%', background: '#0a0a0a'}} />
+              </div>
+
+              {/* Total + QR */}
+              <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1.5rem', flexWrap: 'wrap'}}>
+                <div>
+                  <p style={{color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', margin: '0 0 4px'}}>Total Paid</p>
+                  <p style={{
+                    margin: 0, fontSize: '1.8rem', fontWeight: 800,
+                    background: 'linear-gradient(135deg, #FF9933, #FF2B5E)',
+                    WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent'
+                  }}>Rs. {totalPrice.toFixed(0)}</p>
+                </div>
+                <div style={{background: '#fff', padding: '8px', borderRadius: '12px'}}>
+                  <img src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=Ticket:${bName}-${bookingMovie.name}-${selectedSeats.join('')}`} alt="QR Code" width="100" height="100" style={{display: 'block'}} />
+                </div>
+              </div>
+              <p style={{fontSize: '0.7rem', marginTop: '1rem', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '2px', textAlign: 'center'}}>Scan QR for venue entry • Valid ticket</p>
+            </div>
+          </div>
+
+          {/* Hidden PDF-friendly ticket for export */}
+          <div id="pdf-ticket-container" style={{position: 'absolute', left: '-9999px', background: 'white', color: 'black', padding: '2rem', borderRadius: '16px', maxWidth: '450px'}}>
+            <div style={{ borderBottom: '2px dashed #ccc', paddingBottom: '15px', marginBottom: '15px' }}>
+              <h1 style={{fontSize: '1.6rem', marginBottom: '0.5rem', color: '#111'}}>{bookingMovie.name}</h1>
+              <h3 style={{color: '#FF2B5E', fontSize:'1.1rem'}}>{cinema}</h3>
+            </div>
+            <div style={{textAlign: 'left', fontSize: '1rem', lineHeight: '1.6', color: '#333'}}>
+              <p><strong>Customer Name:</strong> {bName}</p>
+              <p><strong>Movie Name:</strong> {bookingMovie.name}</p>
+              <p><strong>Cinema Location:</strong> {cinema}</p>
+              <p><strong>Showtime:</strong> {bookingMovie.date} @ {bookingMovie.showtime || '18:00'}</p>
+              <p><strong>Ticket Quantity:</strong> {selectedSeats.length} Tickets</p>
+              <p><strong>Seat Assignments:</strong> {selectedSeats.join(', ')}</p>
+              <br/>
+              <p style={{fontSize:'1.2rem', fontWeight:'bold', borderTop: '1px solid #eee', paddingTop: '10px'}}>Total Paid: Rs. {totalPrice.toFixed(2)}</p>
+            </div>
+            <div style={{marginTop: '25px', display: 'flex', justifyContent: 'center'}}>
+              <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=Ticket:${bName}-${bookingMovie.name}-${selectedSeats.join('')}`} alt="QR Code" width="150" height="150" />
+            </div>
+            <p style={{fontSize: '0.8rem', marginTop: '15px', color: '#888', textTransform: 'uppercase', letterSpacing: '1px', textAlign: 'center'}}>Scan for entry - Valid Ticket</p>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="no-print" style={{width: '100%', maxWidth: '480px', marginTop: '1.5rem', position: 'relative', zIndex: 1}}>
+            <button 
+              className="btn" 
+              onClick={async () => {
+                const html2pdf = (await import('html2pdf.js')).default;
+                const element = document.getElementById('pdf-ticket-container');
+                const fileName = `Starstruck_Ticket_${bName.replace(/\s+/g, '_')}.pdf`;
+                const opt = {
+                  margin: 1, filename: fileName,
+                  image: { type: 'jpeg', quality: 0.98 },
+                  html2canvas: { scale: 2, useCORS: true },
+                  jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+                };
+                try {
+                  const base64Pdf = await html2pdf().set(opt).from(element).output('datauristring');
+                  const base64Data = base64Pdf.split(',')[1];
+                  const { Filesystem, Directory } = await import('@capacitor/filesystem');
+                  const { Share } = await import('@capacitor/share');
+                  const writeResult = await Filesystem.writeFile({ path: fileName, data: base64Data, directory: Directory.Documents, recursive: true });
+                  await Share.share({ title: 'Movie Ticket - Starstruck Cinemas', text: `Attached is your ticket for ${bookingMovie.name} at ${cinema}.`, url: writeResult.uri, dialogTitle: 'Save or Share your PDF Ticket' });
+                } catch (capacitorError) {
+                  console.error("Capacitor Native failed, falling back to Web:", capacitorError);
+                  html2pdf().set(opt).from(element).save();
+                }
+              }} 
+              style={{
+                background: 'linear-gradient(135deg, #FF9933, #FF2B5E)',
+                border: 'none', width: '100%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                fontSize: '1rem', fontWeight: 600, padding: '0.9rem',
+                boxShadow: '0 8px 25px rgba(255, 43, 94, 0.3)'
+              }}
+            >
+              <span style={{fontSize: '1.2rem'}}>🖨️</span> Download Official PDF Ticket
+            </button>
+            <button 
+              className="btn" 
+              onClick={() => { setBookingStep(0); setBookingMovie(null); }} 
+              style={{
+                background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+                marginTop: '0.8rem', width: '100%', color: 'rgba(255,255,255,0.6)'
+              }}
+            >
+              ← Back to Movies
+            </button>
           </div>
         </div>
       )}
